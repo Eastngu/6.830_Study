@@ -177,7 +177,17 @@ public class TupleDesc implements Serializable {
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // some code goes here
-        return null;
+        Type[] fieldType = new Type[td1.numFields()+ td2.numFields()];
+        String[] fieldName = new String[td1.numFields()+ td2.numFields()];
+        for(int i=0;i< td1.numFields();i++){
+            fieldType[i]=td1.getFieldType(i);
+            fieldName[i]=td1.getFieldName(i);
+        }
+        for(int i=td1.numFields();i< td1.numFields()+td2.numFields();i++){
+            fieldType[i]=td2.getFieldType(i-td1.numFields());
+            fieldName[i]=td2.getFieldName(i-td1.numFields());
+        }
+        return new TupleDesc(fieldType, fieldName);
     }
 
     /**
@@ -193,7 +203,24 @@ public class TupleDesc implements Serializable {
 
     public boolean equals(Object o) {
         // some code goes here
-        return false;
+
+        if(o==null)
+            return false;
+        try{
+            TupleDesc t = (TupleDesc) o;
+            if(t.numFields()!=this.numFields())
+                return false;
+            for(int i=0;i<t.tdItems.size();i++){
+                if(t.getFieldName(i)!=this.getFieldName(i)||t.getFieldType(i)!=this.getFieldType(i))
+                    return false;
+            }
+            return true;
+        }
+        catch (ClassCastException e){
+            return false;
+        }
+
+
     }
 
     public int hashCode() {
