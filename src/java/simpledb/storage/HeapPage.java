@@ -73,7 +73,8 @@ public class HeapPage implements Page {
     */
     private int getNumTuples() {        
         // some code goes here
-        return 0;
+        int tuple_size=this.td.getSize();
+        return (BufferPool.getPageSize()*8)/(tuple_size*8+1);
 
     }
 
@@ -81,10 +82,9 @@ public class HeapPage implements Page {
      * Computes the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
-    private int getHeaderSize() {        
-        
+    private int getHeaderSize() {
         // some code goes here
-        return 0;
+        return (int)Math.ceil(getNumTuples()/8.0);
                  
     }
     
@@ -118,7 +118,7 @@ public class HeapPage implements Page {
      */
     public HeapPageId getId() {
     // some code goes here
-    throw new UnsupportedOperationException("implement this");
+        return this.pid;
     }
 
     /**
@@ -288,15 +288,22 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        return 0;
+        int numUsedSlots=0;
+        for(byte b:this.header){
+            while(b!=0){
+                numUsedSlots++;
+                b&=(b-1);
+            }
+        }
+        return getNumTuples()-numUsedSlots;
     }
 
     /**
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
-        // some code goes here
-        return false;
+        byte b = this.header[i / 8];
+        return (b & (1 << (i % 8))) != 0;
     }
 
     /**
@@ -313,7 +320,22 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // some code goes here
-        return null;
+        return new Iterator<Tuple>() {
+            private int nextSlot=0;
+            @Override
+            public boolean hasNext() {
+                return this.nextSlot<numSlots-getNumEmptySlots();
+            }
+
+            @Override
+            public Tuple next() {
+                if(!hasNext())
+                    throw new NoSuchElementException();
+                while(!isSlotUsed(nextSlot))
+                    this.nextSlot++;
+                return tuples[this.nextSlot++];
+            }
+        };
     }
 
 }

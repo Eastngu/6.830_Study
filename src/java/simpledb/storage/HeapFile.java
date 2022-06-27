@@ -29,8 +29,12 @@ public class HeapFile implements DbFile {
      *            the file that stores the on-disk backing store for this heap
      *            file.
      */
+    private File f;
+    private TupleDesc td;
     public HeapFile(File f, TupleDesc td) {
         // some code goes here
+        this.f=f;
+        this.td=td;
     }
 
     /**
@@ -40,7 +44,7 @@ public class HeapFile implements DbFile {
      */
     public File getFile() {
         // some code goes here
-        return null;
+        return this.f;
     }
 
     /**
@@ -54,7 +58,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return this.f.getAbsoluteFile().hashCode();
     }
 
     /**
@@ -64,13 +68,29 @@ public class HeapFile implements DbFile {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return this.td;
     }
 
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
-        // some code goes here
-        return null;
+        try{
+            RandomAccessFile rfile = new RandomAccessFile(f,"r");
+            int pagesize=BufferPool.getPageSize();
+            byte[]buffer=new byte[pagesize];
+            try {
+                rfile.seek(pid.getPageNumber()*pagesize);
+                if(rfile.read(buffer)==-1)
+                    return null;
+            }
+            catch (IOException e){
+                e.printStackTrace();
+                return null;
+            }
+            rfile.close();
+            return new HeapPage(new HeapPageId(pid.getTableId(),pid.getPageNumber()),buffer);
+        } catch (Exception e) {
+            throw new IllegalArgumentException();
+        }
     }
 
     // see DbFile.java for javadocs
@@ -84,7 +104,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return 0;
+        return (int)(this.f.length()/BufferPool.getPageSize());
     }
 
     // see DbFile.java for javadocs
@@ -106,7 +126,58 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
-        return null;
+        return new DbFileIterator() {
+
+            private int numPage = numPages();
+            private int pid = 0;
+            private BufferPool bufferPool = Database.getBufferPool();
+            private HeapPage currPage;
+            private Iterator<Tuple> currTupleIter;
+            private boolean isOpen = false;
+
+            @Override
+            public void open() throws DbException, TransactionAbortedException {
+                isOpen = true;
+                getPage(pid++);
+            }
+
+            @Override
+            public boolean hasNext() throws DbException, TransactionAbortedException {
+                return isOpen && pid < numPage || (pid == numPage && currTupleIter.hasNext());
+            }
+
+            private boolean getPage(int pid) throws TransactionAbortedException, DbException {
+                if (!isOpen) throw new DbException("not open");
+                currPage = (HeapPage) bufferPool.getPage(tid, new HeapPageId(getId(), pid), Permissions.READ_ONLY);
+                if (currPage == null) return false;
+                currTupleIter = currPage.iterator();
+                return true;
+            }
+
+            @Override
+            public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+                if (!isOpen || currTupleIter == null)
+                    throw new NoSuchElementException();
+                if (!currTupleIter.hasNext()) {
+                    getPage(pid++);
+                }
+                return currTupleIter.next();
+            }
+
+            @Override
+            public void rewind() throws DbException, TransactionAbortedException {
+                close();
+                open();
+            }
+
+            @Override
+            public void close() {
+                pid = 0;
+                isOpen = false;
+                currPage = null;
+                currTupleIter = null;
+            }
+        };
     }
 
 }
