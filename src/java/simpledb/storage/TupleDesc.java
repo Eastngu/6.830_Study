@@ -66,7 +66,7 @@ public class TupleDesc implements Serializable {
         // some code goes here
         tdItems=new ArrayList<>(typeAr.length);
         for(int i=0;i<typeAr.length;i++)
-            tdItems.add(0,new TDItem(typeAr[i],fieldAr[i]));
+            tdItems.add(new TDItem(typeAr[i],fieldAr[i]));
     }
 
     /**
@@ -144,7 +144,7 @@ public class TupleDesc implements Serializable {
         // some code goes here
         try{
             for(int i=0;i<tdItems.size();i++)
-                if(tdItems.get(i).fieldName==name)
+                if(tdItems.get(i).fieldName.equals(name))
                     return i;
         }
         catch (Exception e){
