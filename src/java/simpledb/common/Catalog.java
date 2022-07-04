@@ -25,7 +25,6 @@ public class Catalog {
      * Constructor.
      * Creates a new, empty catalog.
      */
-    static int cnt=0;
     ConcurrentHashMap<Integer,Table> c_map;
     class Table{
         private DbFile file;
